@@ -145,6 +145,20 @@ class GoogleFontCSS
     console.log ["return lines",lines]
     cb(null,lines)
 
+app.get "/", (req,res) ->
+  font = req.query.family || "Gorditas:400,700"
+  fontName = font.split(":")[0]
+  html = """
+  <html><body>
+  <h1>Grumpy wizards make toxic brew for the evil Queen and Jack.</h1>
+  <link rel="stylesheet" type="text/css" href="/css?family=#{font}">
+  <style>
+    h1 { font-family: '#{fontName}'; }
+  </style>
+  </body></html>
+  """
+  res.end(html)
+
 app.get '/css', (req,res) ->
   resource_url = "#{GOOGLE_FONTS_DOMAIN}#{req.originalUrl}"
   console.log "get", resource_url
