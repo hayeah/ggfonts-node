@@ -5,6 +5,7 @@ request = require("request")
 
 # http://fonts.googleapis.com/css?family=Signika+Negative:300
 GOOGLE_FONTS_DOMAIN = "http://fonts.googleapis.com"
+FONT_STATIC_ROOT = "http://themes.googleusercontent.com/static"
 
 class Cache
   constructor: ->
@@ -39,8 +40,33 @@ class MemoryCache
 #   constructor: (arguments) ->
 #     throw "unimplemented"
 
-
 class GoogleFont
+  cache: new MemoryCache()
+
+  constructor: (@url) ->
+
+  get: (cb) ->
+    if font = @cache.get(@url)
+      cb(null,font)
+      return
+
+    await @download(defer(err,res,font))
+    if err
+      cb(err)
+      return
+
+    @cache.put(@url,font)
+    cb(null,font)
+
+  download: (cb) ->
+    request.get {
+      url: @url
+      timeout: 5000
+      encoding: null
+    }, cb
+
+
+class GoogleFontCSS
   cache: new MemoryCache()
   constructor: (@url) ->
 
@@ -84,14 +110,13 @@ class GoogleFont
     lines.join "\n"
 
   # rewrite the font URL to local
-  FONT_ROOT = "http://themes.googleusercontent.com/static/"
   rewriteURL: (lines) ->
     lines = for line in lines
       re = /.*src:.*(url\((.+)\)) /
       if m = re.exec(line)
         console.log ["match",line]
         fontURL = m[2]
-        newFontURL = fontURL.replace(FONT_ROOT,"/")
+        newFontURL = fontURL.replace(FONT_STATIC_ROOT,"/")
         console.log ["new", newFontURL]
         line2 = line.replace(/url\(.*\)/,"url(#{newFontURL})")
         console.log ["replaced", line2]
@@ -104,10 +129,20 @@ class GoogleFont
 app.get '/css', (req,res) ->
   resource_url = "#{GOOGLE_FONTS_DOMAIN}#{req.originalUrl}"
   console.log "get", resource_url
-  font = new GoogleFont(resource_url)
+  font = new GoogleFontCSS(resource_url)
   await font.getCSS(defer(err,css))
-  console.log ["req end", err, css]
   res.end(css)
+
+app.get /^\/fonts\/(.*)/, (req,res) ->
+  resource_url = "#{FONT_STATIC_ROOT}#{req.originalUrl}"
+  console.log ["get",resource_url]
+  gfont = new GoogleFont(resource_url)
+  await gfont.get(defer(err,file))
+
+  if err
+    res.status(404).end("not found: #{err}")
+  else
+    res.end(file)
 
 port = 4000
 console.log "listening on #{port}"
