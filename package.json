@@ -1,0 +1,6 @@
+{ "name": "ggfonts-hexie"
+, "dependencies":
+  [ "express"
+  , "iced-coffee-script"
+  ]
+}
